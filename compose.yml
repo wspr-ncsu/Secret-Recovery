@@ -31,23 +31,6 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
 
-  noise-service:
-    container_name: noise-service
-    image: skrecovery
-    network_mode: "host"
-    volumes:
-      - .:/skrecovery
-    privileged: true
-    command: ["sh", "-lc", "sleep 5 && python -m fabric.noise_simulation"]
-    depends_on:
-      - db
-      - ordering-service
-    cpuset: "0"
-    restart: unless-stopped
-    environment:
-      PYTHONUNBUFFERED: "1"
-      PYTHONDONTWRITEBYTECODE: "1"
-
   experiment:
     container_name: experiment
     image: skrecovery
