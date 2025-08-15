@@ -1,8 +1,10 @@
 import os
+import time
 import re
 import json
 import hashlib
 import traceback
+from functools import lru_cache
 from typing import Union, Optional, List
 import datetime as dt
 
@@ -13,14 +15,8 @@ import skrecovery.config as config
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import ec, rsa, padding as asy_padding
-
-from pycose.messages import Sign1Message
-from pycose.keys.ec2 import EC2Key
-from pycose.keys.curves import P384
-
-import datetime as dt
-
+from cryptography.hazmat.primitives.asymmetric import ec, utils, rsa, padding as asy_padding
+from cryptography.hazmat.primitives.asymmetric import utils as asn1_utils
 
 # ---------------------------------------------------------------------------
 # Key management (BLS app key you want NSM to bind)
@@ -32,7 +28,7 @@ privateKey: Optional[bytes] = None
 def init():
     """
     Initialize application keys. Expects sigma.keygen() -> (sk, pk).
-    Ensure `publicKey` are raw bytes suitable for attestation binding.
+    Ensure publicKey is raw bytes suitable for attestation binding.
     """
     global publicKey, privateKey
     if publicKey and privateKey:
@@ -124,6 +120,77 @@ def _spki_sha256(cert: x509.Certificate) -> bytes:
     return hashlib.sha256(spki).digest()
 
 
+def _cert_validity_window_utc(cert: x509.Certificate):
+    """Return (not_before, not_after) as timezone-aware UTC datetimes."""
+    try:
+        # cryptography >= 41
+        return cert.not_valid_before_utc, cert.not_valid_after_utc
+    except AttributeError:
+        # Older cryptography: fall back to naive values, treat as UTC
+        nbf = cert.not_valid_before
+        naf = cert.not_valid_after
+        if nbf.tzinfo is None:
+            nbf = nbf.replace(tzinfo=dt.timezone.utc)
+        if naf.tzinfo is None:
+            naf = naf.replace(tzinfo=dt.timezone.utc)
+        return nbf, naf
+
+
+# ---------------------------------------------------------------------------
+# Fast COSE helpers (avoid pycose overhead)
+# ---------------------------------------------------------------------------
+
+# Canonical protected header bstr for {1: ES384} (map(1){alg:-35})
+_COSE_ES384_PROTECTED = b"\xA1\x01\x38\x22"
+
+def _encode_cbor_bstr(b: bytes) -> bytes:
+    L = len(b)
+    if L < 24:
+        return bytes([0x40 | L]) + b
+    elif L <= 0xFF:
+        return b"\x58" + bytes([L]) + b
+    elif L <= 0xFFFF:
+        return b"\x59" + L.to_bytes(2, "big") + b
+    elif L <= 0xFFFFFFFF:
+        return b"\x5A" + L.to_bytes(4, "big") + b
+    else:
+        return b"\x5B" + L.to_bytes(8, "big") + b
+
+def _make_sig_structure(protected_bstr: bytes, payload_bstr: bytes) -> bytes:
+    # Sig_structure = ["Signature1", protected, external_aad="", payload]
+    # 0x84 = array(4), 0x6A = tstr(len=10) "Signature1", 0x40 = bstr("")
+    return (
+        b"\x84" +
+        b"\x6aSignature1" +
+        _encode_cbor_bstr(protected_bstr) +
+        b"\x40" +
+        _encode_cbor_bstr(payload_bstr)
+    )
+
+def _cose_ecdsa_sig_to_der(sig: bytes, coord_size: int = 48) -> bytes:
+    """
+    COSE ECDSA signature is raw r||s (fixed width). Convert to DER for cryptography.
+    coord_size = 48 for P-384 (r and s are 48 bytes each).
+    """
+    if len(sig) != 2 * coord_size:
+        raise ValueError(f"Unexpected COSE signature length: {len(sig)} (want {2*coord_size})")
+    r = int.from_bytes(sig[:coord_size], "big")
+    s = int.from_bytes(sig[coord_size:], "big")
+    return asn1_utils.encode_dss_signature(r, s)
+
+@lru_cache(maxsize=256)
+def _pubkey_from_leaf_cert_der(cert_der: bytes) -> ec.EllipticCurvePublicKey:
+    leaf = x509.load_der_x509_certificate(cert_der)
+    pub = leaf.public_key()
+    if not isinstance(pub, ec.EllipticCurvePublicKey) or getattr(pub.curve, "name", None) != "secp384r1":
+        raise ValueError("Unexpected signing key type/curve (expect P-384)")
+    return pub
+
+@lru_cache(maxsize=4096)
+def _der_sig384_cached(sig: bytes) -> bytes:
+    return _cose_ecdsa_sig_to_der(sig, 48)
+
+
 # ---------------------------------------------------------------------------
 # Chain validation (leaf -> intermediates -> pinned root)
 # ---------------------------------------------------------------------------
@@ -139,7 +206,7 @@ def validate_attestation_chain_to_root(
     Args:
       attestation: Raw bytes of the attestation document (CBOR COSE_Sign1).
       pinned_root_spki_sha256: SHA-256 of the trusted root's SPKI (bytes).
-      at_time: Time to evaluate cert validity (defaults to now, UTC-naive).
+      at_time: Time to evaluate cert validity (defaults to now, UTC).
 
     Returns:
       True if the chain is valid and terminates at the pinned root; False otherwise.
@@ -149,10 +216,11 @@ def validate_attestation_chain_to_root(
         obj = cbor2.loads(attestation)
         if hasattr(obj, "tag"):
             obj = obj.value
-        cose = Sign1Message.from_cose_obj(obj, allow_unknown_attributes=True)
+        # COSE_Sign1 array: [protected bstr, unprotected map, payload bstr, signature bstr]
+        _, _, payload_bstr, _ = obj
 
         # Extract payload -> { certificate, cabundle, ... }
-        payload = cbor2.loads(cose.payload)
+        payload = cbor2.loads(payload_bstr)
         leaf_der = payload.get("certificate")
         bundle_ders = payload.get("cabundle") or []
         if not leaf_der or not isinstance(bundle_ders, list):
@@ -224,9 +292,10 @@ def attestation_to_json(attestation_doc_bytes: bytes) -> str:
         obj = cbor2.loads(attestation_doc_bytes)
         if hasattr(obj, "tag"):
             obj = obj.value
-        cose = Sign1Message.from_cose_obj(obj, allow_unknown_attributes=True)
+        # COSE_Sign1: [protected, unprotected, payload, signature]
+        _, _, payload_bstr, _ = obj
 
-        payload = cbor2.loads(cose.payload)
+        payload = cbor2.loads(payload_bstr)
         readable_payload = {}
 
         for key, value in payload.items():
@@ -277,84 +346,80 @@ def attestation_to_json(attestation_doc_bytes: bytes) -> str:
 # Full validation: COSE signature + chain + optional bindings
 # ---------------------------------------------------------------------------
 
+def print_time(start: float, label: str = "Operation"):
+    elapsed = (time.perf_counter() - start) * 1000
+    print(f"✅ {label} succeeded in {elapsed:.2f} milliseconds.")
+
 def validate(
     attestation: bytes,
     expected_user_data: Optional[bytes] = None,
-    expected_bound_pubkey: Optional[bytes] = None
+    expected_bound_pubkey: Optional[bytes] = None,
+    verify_chain: bool = False,   # set True if you want chain validation too
 ) -> bool:
     """
-    Validate COSE signature using the leaf cert, pin the chain to AWS root,
-    and optionally check bound app key (BLS) and user_data.
+    Fast path: manual COSE Sig_structure + ES384 verify via cryptography/OpenSSL.
+    Enforces alg=ES384, checks bound public_key and user_data, and can optionally
+    validate the cert chain pinned to AWS Nitro root.
     """
+    start = time.perf_counter()
     try:
         # 1) Decode COSE_Sign1 (AWS returns an untagged CBOR array)
+        t1 = time.perf_counter()
         obj = cbor2.loads(attestation)
         if hasattr(obj, "tag"):
             obj = obj.value
-        cose_msg = Sign1Message.from_cose_obj(obj, allow_unknown_attributes=True)
+        # COSE_Sign1 array: [protected bstr, unprotected map, payload bstr, signature bstr]
+        phdr_bstr, _, payload_bstr, signature = obj
+        print_time(t1, "COSE message decoded")
 
-        # 2) Extract payload and signer key (leaf P-384)
-        payload = cbor2.loads(cose_msg.payload)
+        # 2) Protected header: fast path equality; fallback to decode for alg check
+        t2 = time.perf_counter()
+        if phdr_bstr != _COSE_ES384_PROTECTED:
+            prot = cbor2.loads(phdr_bstr) if phdr_bstr else {}
+            if prot.get(1) != -35:  # 1 == "alg", -35 == ES384
+                return False
+        print_time(t2, "Protected header checked")
+
+        # 3) Extract payload and signer key (leaf P-384)
+        t3 = time.perf_counter()
+        payload = cbor2.loads(payload_bstr)
         cert_der = payload.get("certificate")
         if not cert_der:
-            # print("❌ Missing 'certificate' in payload")
             return False
+        pub = _pubkey_from_leaf_cert_der(cert_der)  # cached by DER
+        print_time(t3, "Certificate & public key extracted")
 
-        leaf = x509.load_der_x509_certificate(cert_der)
-        pub = leaf.public_key()
-        if not isinstance(pub, ec.EllipticCurvePublicKey) or getattr(pub.curve, "name", None) != "secp384r1":
-            # print(f"❌ Unexpected signing key type/curve: {type(pub)} / {getattr(pub.curve, 'name', None)}")
+        # 4) Verify COSE signature (manual Sig_structure, hashlib prehash, cached DER conversion)
+        t4 = time.perf_counter()
+        sig_structure = _make_sig_structure(phdr_bstr, payload_bstr)
+        digest = hashlib.sha384(sig_structure).digest()
+        der_sig = _der_sig384_cached(signature)
+        pub.verify(der_sig, digest, ec.ECDSA(utils.Prehashed(hashes.SHA384())))
+        print_time(t4, "Signature verified")
+
+        # 5) Optional bindings (strict byte-for-byte)
+        t5 = time.perf_counter()
+        if expected_bound_pubkey is not None and payload.get("public_key") != expected_bound_pubkey:
             return False
+        print_time(t5, "Public key binding verified")
 
-        nums = pub.public_numbers()
-        cose_msg.key = EC2Key(
-            crv=P384,
-            x=nums.x.to_bytes(48, "big"),
-            y=nums.y.to_bytes(48, "big"),
-        )
-
-        # 3) Verify COSE signature
-        if not cose_msg.verify_signature():
-            # print("❌ Signature is INVALID.")
+        t6 = time.perf_counter()
+        if expected_user_data is not None and payload.get("user_data") != expected_user_data:
             return False
+        print_time(t6, "User data binding verified")
 
-        # 4) Optional bindings
-        if expected_bound_pubkey is not None:
-            bound = payload.get("public_key")
-            if bound != expected_bound_pubkey:
-                # print("❌ Bound 'public_key' does not match expected BLS key bytes.")
+        # 6) Optional: chain validation to pinned root (compute digest lazily)
+        if verify_chain:
+            t7 = time.perf_counter()
+            pinned = to_pinned_root_spki_sha256(config.AWS_NITRO_ROOT_CERT_PEM)
+            if not validate_attestation_chain_to_root(attestation, pinned):
                 return False
+            print_time(t7, "Cert chain verified")
 
-        if expected_user_data is not None:
-            if payload.get("user_data") != expected_user_data:
-                # print("❌ 'user_data' mismatch.")
-                return False
-
-        # 5) Chain validation to pinned root (This should be cached so that we simply perform equal-to checks)
-        # root_digest = to_pinned_root_spki_sha256(config.AWS_NITRO_ROOT_CERT_PEM)
-        # if not validate_attestation_chain_to_root(attestation, root_digest):
-        #     # print("❌ Certificate chain invalid or not pinned to expected root.")
-        #     return False
-
-        # print("✅ Signature and chain valid; attestation verified.")
+        elapsed = (time.perf_counter() - start) * 1000
+        print(f"✅ Full Validation succeeded in {elapsed:.2f} milliseconds.")
         return True
 
     except Exception:
         traceback.print_exc()
-        # print("❌ Error during decoding or verification.")
         return False
-
-def _cert_validity_window_utc(cert):
-    """Return (not_before, not_after) as timezone-aware UTC datetimes."""
-    try:
-        # cryptography >= 41
-        return cert.not_valid_before_utc, cert.not_valid_after_utc
-    except AttributeError:
-        # Older cryptography: fall back to naive values, treat as UTC
-        nbf = cert.not_valid_before
-        naf = cert.not_valid_after
-        if nbf.tzinfo is None:
-            nbf = nbf.replace(tzinfo=dt.timezone.utc)
-        if naf.tzinfo is None:
-            naf = naf.replace(tzinfo=dt.timezone.utc)
-        return nbf, naf

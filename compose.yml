@@ -9,26 +9,63 @@ services:
       - "27017:27017"
     volumes:
       - mongodata:/data/db
-    # This service joins the custom network defined below
     networks:
       - default
+    cpuset: "0"
+    restart: unless-stopped
 
-  skrecovery:
-    container_name: skrec
-    build:
-      context: .
-      dockerfile: Dockerfile.env
-    # This service uses the host's network directly.
-    # It can access the 'db' service via localhost:27017
+  ordering-service:
+    container_name: ordering-service
+    image: skrecovery
     network_mode: "host"
     volumes:
-      # Mounts the current project directory into the container
       - .:/skrecovery
-    # Keeps the container running indefinitely for exec commands
+    privileged: true
+    # Use array form so the shell runs 'sleep && python' reliably
+    command: ["sh", "-lc", "sleep 5 && python -m fabric.ordering_service"]
+    depends_on:
+      - db
+    cpuset: "0"
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+
+  noise-service:
+    container_name: noise-service
+    image: skrecovery
+    network_mode: "host"
+    volumes:
+      - .:/skrecovery
+    privileged: true
+    command: ["sh", "-lc", "sleep 5 && python -m fabric.noise_simulation"]
+    depends_on:
+      - db
+      - ordering-service
+    cpuset: "0"
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+
+  experiment:
+    container_name: experiment
+    image: skrecovery
+    network_mode: "host"
+    volumes:
+      - .:/skrecovery
     devices:
       - "/dev/vsock:/dev/vsock"
     privileged: true
+    # Pin verifier work to CPU 2
+    cpuset: "2"
+    cap_add:
+      - SYS_NICE
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     command: tail -f /dev/null
+    restart: unless-stopped
 
 networks:
   default:
