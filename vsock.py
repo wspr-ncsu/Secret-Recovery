@@ -1,5 +1,6 @@
-import socket, threading
+import socket, threading, traceback
 import enclave.app as enclave
+import enclave.attest as attest
 import skrecovery.config as config
 
 HEADER = 64
@@ -62,7 +63,8 @@ def server_handle_client_connection(conn: socket.socket, addr):
     print(f"[CONNECTION CLOSED] {addr} disconnected.")
     
 def server_start(server: socket.socket):
-    print(f"[LISTENING] Server is listening on {SERVER}:{config.VSOCK_PORT}")
+    attest.init()
+    
     while True:
         conn, addr = server.accept()
         thread = threading.Thread(

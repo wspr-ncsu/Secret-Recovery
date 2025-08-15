@@ -1,14 +1,16 @@
 #/bin/bash
 
-# Install the AWS Nitro Enclaves CLI
-sudo amazon-linux-extras install aws-nitro-enclaves-cli -y
-sudo yum install aws-nitro-enclaves-cli-devel -y
+sudo dnf update -y
+sudo dnf install -y docker
 
-# Add your user to the ne user group
-sudo usermod -aG ne ec2-user
+sudo systemctl start docker
+sudo systemctl enable docker
 
-# Add your user to the docker user group
-sudo usermod -aG docker ec2-user
+sudo usermod -aG docker $USER
+
+newgrp docker
+
+sudo dnf install -y aws-nitro-enclaves-cli aws-nitro-enclaves-cli-devel jq
 
 # Check the installation
 nitro-cli --version

@@ -14,6 +14,7 @@ Implementation for How to Recover a Cryptographic Secret From the Cloud Paper. T
 
 ## Running the Secret Recovery
 The ```experiments``` folder contains the scripts to run the secret recovery. The scripts are: 
+- ```register.py```: This script registers both the server and client on the fabric blockchain.
 - ```store.py```: This script runs the secret recovery store algorithm
 - ```retrieve.py```: This script runs the secret recovery retrieve algorithm
 - ```remove.py```: This script runs the secret recovery remove algorithm
@@ -45,6 +46,10 @@ remember to replace the ```key-name``` and ```security-groups``` with your own v
 - The commands below assume you are in the project root folder. If you are not, navigate to the project root folder.
 
 - Modify the nitro-cli allocator service to allow 4096 MB of memory for the enclave.
+    1. Run sudo nano ```/etc/nitro_enclaves/allocator.yaml``` and change ```memory_mib: 512``` to ```memory_mib: 4096```.
+    1. Restart the allocator service: ```sudo systemctl restart nitro-enclaves-allocator.service```
+
+
 
 - Build the enclave image by running the ```build-and-run-enclave.sh``` script in the project root folder. This script will 
     - Build the enclave docker image 

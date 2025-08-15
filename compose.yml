@@ -6,9 +6,29 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: secret
     ports:
-      - 27017:27017
+      - "27017:27017"
     volumes:
       - mongodata:/data/db
+    # This service joins the custom network defined below
+    networks:
+      - default
+
+  skrecovery:
+    container_name: skrec
+    build:
+      context: .
+      dockerfile: Dockerfile.env
+    # This service uses the host's network directly.
+    # It can access the 'db' service via localhost:27017
+    network_mode: "host"
+    volumes:
+      # Mounts the current project directory into the container
+      - .:/skrecovery
+    # Keeps the container running indefinitely for exec commands
+    devices:
+      - "/dev/vsock:/dev/vsock"
+    privileged: true
+    command: tail -f /dev/null
 
 networks:
   default:

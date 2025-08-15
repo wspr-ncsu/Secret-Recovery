@@ -38,9 +38,11 @@ ORDER_SERVICE_CONFIG = {
 }
 
 USE_VSOCK = bool(int(env("USE_VSOCK", 1)))
-VSOCK_HOST = env("VSOCK_HOST", 16)
+VSOCK_HOST = int(env("VSOCK_HOST", 16))
 VSOCK_PORT = int(env("VSOCK_PORT", 5005))
 VSOCK_ENV = env('VSOCK_ENV', 'nitro')
 
 def is_nitro_env():
     return VSOCK_ENV == 'nitro'
+
+AWS_NITRO_ROOT_CERT_PEM = env("AWS_NITRO_ROOT_CERT_PEM")
