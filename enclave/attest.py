@@ -361,63 +361,63 @@ def validate(
     Enforces alg=ES384, checks bound public_key and user_data, and can optionally
     validate the cert chain pinned to AWS Nitro root.
     """
-    start = time.perf_counter()
+    # start = time.perf_counter()
     try:
         # 1) Decode COSE_Sign1 (AWS returns an untagged CBOR array)
-        t1 = time.perf_counter()
+        # t1 = time.perf_counter()
         obj = cbor2.loads(attestation)
         if hasattr(obj, "tag"):
             obj = obj.value
         # COSE_Sign1 array: [protected bstr, unprotected map, payload bstr, signature bstr]
         phdr_bstr, _, payload_bstr, signature = obj
-        print_time(t1, "COSE message decoded")
+        # print_time(t1, "COSE message decoded")
 
         # 2) Protected header: fast path equality; fallback to decode for alg check
-        t2 = time.perf_counter()
+        # t2 = time.perf_counter()
         if phdr_bstr != _COSE_ES384_PROTECTED:
             prot = cbor2.loads(phdr_bstr) if phdr_bstr else {}
             if prot.get(1) != -35:  # 1 == "alg", -35 == ES384
                 return False
-        print_time(t2, "Protected header checked")
+        # print_time(t2, "Protected header checked")
 
         # 3) Extract payload and signer key (leaf P-384)
-        t3 = time.perf_counter()
+        # t3 = time.perf_counter()
         payload = cbor2.loads(payload_bstr)
         cert_der = payload.get("certificate")
         if not cert_der:
             return False
         pub = _pubkey_from_leaf_cert_der(cert_der)  # cached by DER
-        print_time(t3, "Certificate & public key extracted")
+        # print_time(t3, "Certificate & public key extracted")
 
         # 4) Verify COSE signature (manual Sig_structure, hashlib prehash, cached DER conversion)
-        t4 = time.perf_counter()
+        # t4 = time.perf_counter()
         sig_structure = _make_sig_structure(phdr_bstr, payload_bstr)
         digest = hashlib.sha384(sig_structure).digest()
         der_sig = _der_sig384_cached(signature)
         pub.verify(der_sig, digest, ec.ECDSA(utils.Prehashed(hashes.SHA384())))
-        print_time(t4, "Signature verified")
+        # print_time(t4, "Signature verified")
 
         # 5) Optional bindings (strict byte-for-byte)
-        t5 = time.perf_counter()
+        # t5 = time.perf_counter()
         if expected_bound_pubkey is not None and payload.get("public_key") != expected_bound_pubkey:
             return False
-        print_time(t5, "Public key binding verified")
+        # print_time(t5, "Public key binding verified")
 
-        t6 = time.perf_counter()
+        # t6 = time.perf_counter()
         if expected_user_data is not None and payload.get("user_data") != expected_user_data:
             return False
-        print_time(t6, "User data binding verified")
+        # print_time(t6, "User data binding verified")
 
         # 6) Optional: chain validation to pinned root (compute digest lazily)
         if verify_chain:
-            t7 = time.perf_counter()
+            # t7 = time.perf_counter()
             pinned = to_pinned_root_spki_sha256(config.AWS_NITRO_ROOT_CERT_PEM)
             if not validate_attestation_chain_to_root(attestation, pinned):
                 return False
-            print_time(t7, "Cert chain verified")
+            # print_time(t7, "Cert chain verified")
 
-        elapsed = (time.perf_counter() - start) * 1000
-        print(f"✅ Full Validation succeeded in {elapsed:.2f} milliseconds.")
+        # elapsed = (time.perf_counter() - start) * 1000
+        # print(f"✅ Full Validation succeeded in {elapsed:.2f} milliseconds.")
         return True
 
     except Exception:
