@@ -44,7 +44,7 @@ Pick one path:
 
 ### Path A: AWS Nitro Enclaves (Real TEE)
 
-**Launch parent instance (choose CLI *or* Console).**
+**Launch parent instance (choose CLI *or* AWS Web Management Console).**
 
 **CLI (example uses `us-east-1`; use the AMI for your region):**
 
@@ -56,7 +56,7 @@ aws ec2 run-instances --image-id ami-00ca32bbc84273381 --count 1 --instance-type
 
 ---
 
-**Console (point-and-click with all the details):**
+**AWS Management Console:**
 
 1. Go to the **EC2 Dashboard** and click **Launch instance**.
 2. Under *Name*, enter any label for your instance.
@@ -70,10 +70,10 @@ aws ec2 run-instances --image-id ami-00ca32bbc84273381 --count 1 --instance-type
 6. Under *Network settings*:
 
    * If you already have a security group, select it.
-   * Otherwise, click **Create security group**. Defaults are usually fine unless you know you need custom rules.
+   * Otherwise, select **Create security group**. Defaults are usually fine unless you know you need custom rules.
 7. Under *Configure storage*:
 
-   * Change the default **8 GiB** to at least **30 GiB**. This avoids running out of space mid-experiment.
+   * Change the default **8 GiB** to **30 GiB**. This avoids running out of space mid-experiment.
 8. Expand *Advanced details*:
 
    * Scroll to **Nitro Enclaves**, and select **Enable**.
@@ -87,7 +87,12 @@ aws ec2 run-instances --image-id ami-00ca32bbc84273381 --count 1 --instance-type
 ssh -i path/to/skrec.pem ec2-user@<public-ip>
 ```
 
-Find `<public-ip>` under your instance details in the AWS Console.
+Find `<public-ip>` under your instance details in the AWS Console. If you get 
+> Permissions 0644 for 'skrec.pem' are too open.
+Run the command below to fix the permission of the file:
+```bash
+sudo chmod 600 skrec.pem
+```
 
 ---
 
@@ -104,13 +109,13 @@ sudo yum install git -y
 **Clone the repo:**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/wspr-ncsu/Secret-Recovery.git
 ```
 
 **Enter the repo:**
 
 ```bash
-cd <repository-root>
+cd Secret-Recovery
 ```
 
 **Run parent setup (installs Docker, Docker Compose, nitro-cli):**
