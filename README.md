@@ -2,7 +2,7 @@
 
 **Status:** ✅ Accepted at **ACM CCS 2025** (artifact available)
 
-**Paper:** “How to Recover a Cryptographic Secret From the Cloud” — also on the [Cryptology ePrint Archive (2023/1308)](https://eprint.iacr.org/2023/1308)
+**Paper:** *How to Recover a Cryptographic Secret From the Cloud* — also on the [Cryptology ePrint Archive (2023/1308)](https://eprint.iacr.org/2023/1308)
 
 ---
 
@@ -40,6 +40,8 @@ Pick one path:
 * **Path A (recommended for real TEE results):** Run on **AWS Nitro Enclaves**.
 * **Path B (fastest to try locally):** Run the **emulated** setup with Docker.
 
+---
+
 ### Path A: AWS Nitro Enclaves (Real TEE)
 
 **Launch parent instance (choose CLI *or* Console).**
@@ -50,24 +52,44 @@ Pick one path:
 aws ec2 run-instances --image-id ami-00ca32bbc84273381 --count 1 --instance-type m5.xlarge --key-name your_key_name --security-groups your_security_group_name --enclave-options 'Enabled=true'
 ```
 
-> Heads-up: Replace `your_key_name` and `your_security_group_name`. Make sure your AMI is valid for your chosen region.
+> Replace `your_key_name` and `your_security_group_name`. Make sure your AMI ID matches your chosen region.
 
-**Console (point-and-click checklist):**
+---
 
-1. EC2 → **Launch instance**
-2. AMI: **Amazon Linux 2023 kernel-6.1 (64-bit x86)**
-3. Instance type: **m5.xlarge**
-4. Key pair: create or select one
-5. Security group: default is fine unless you know you need custom rules
-6. Storage: bump from **8 GB** to **≥ 30 GB**
-7. Advanced details → **Nitro Enclaves: Enable**
-8. **Launch**
+**Console (point-and-click with all the details):**
+
+1. Go to the **EC2 Dashboard** and click **Launch instance**.
+2. Under *Name*, enter any label for your instance.
+3. For the AMI, choose **Amazon Linux → Amazon Linux 2023 kernel-6.1 AMI (64-bit x86)**.
+4. For the instance type, select **m5.xlarge**.
+5. Under *Key pair (login)*:
+
+   * If you already have one, select it.
+   * If not, click **Create key pair**, enter a name (e.g., `skrec`), choose **ED25519**, then click **Create key pair**.
+   * This will automatically download a private key file (e.g., `skrec.pem`) — keep it safe, you’ll need it to log in.
+6. Under *Network settings*:
+
+   * If you already have a security group, select it.
+   * Otherwise, click **Create security group**. Defaults are usually fine unless you know you need custom rules.
+7. Under *Configure storage*:
+
+   * Change the default **8 GiB** to at least **30 GiB**. This avoids running out of space mid-experiment.
+8. Expand *Advanced details*:
+
+   * Scroll to **Nitro Enclaves**, and select **Enable**.
+9. On the right-hand **Summary** panel, click **Launch instance**.
+
+---
 
 **Connect to the instance:**
 
 ```bash
 ssh -i path/to/skrec.pem ec2-user@<public-ip>
 ```
+
+Find `<public-ip>` under your instance details in the AWS Console.
+
+---
 
 **Update and install git:**
 
@@ -264,7 +286,7 @@ python -m experiments.get_stats results/store.csv results/store-summary.csv
 
 ## What this artifact is / isn’t
 
-* **Is:** A research prototype implementation to test the feasibility of our approach to secret-recovery mechanism using TEEs.
+* **Is:** A research prototype implementation to test the feasibility of our secret-recovery mechanism using TEEs.
 * **Is not:** A production or reference implementation. Please do not deploy this.
 
 ---
@@ -272,17 +294,21 @@ python -m experiments.get_stats results/store.csv results/store-summary.csv
 ## Reproducibility & Environment Notes
 
 * **TEE path (AWS Nitro Enclaves):**
+
   * Parent: Amazon Linux 2023 (kernel 6.1), instance type **m5.xlarge** works well.
   * Enclave: Allocate **≥ 4 GiB** (`memory_mib: 4096`) and **2 vCPUs** (configured by our helper).
 
 * **Emulated path (Docker):**
+
   * Any recent Docker / Docker Compose on Linux/macOS should be fine.
 
 * **Outputs:**
+
   * Raw per-run measurements go to `results/*.csv`.
   * Aggregated stats are produced by `experiments.get_stats` into your chosen output path.
 
 * **Environment variables:**
+
   * See `.env.example`. For emulation, set `USE_VSOCK=1`, `VSOCK_ENV=emulated`, and `VSOCK_HOST=localhost`.
 
 ---
@@ -290,19 +316,22 @@ python -m experiments.get_stats results/store.csv results/store-summary.csv
 ## Troubleshooting
 
 * **“Permission denied” with Docker:**
-  Try adding your user to the `docker` group or prefix with `sudo` depending on your OS.
+  Add your user to the `docker` group or prefix with `sudo`.
+
 * **Enclave won’t start / limited memory:**
   Double-check `/etc/nitro_enclaves/allocator.yaml` has `memory_mib: 4096` and that you restarted the allocator.
+
 * **AMI or region mix-ups:**
   Make sure your **AMI ID matches your region**. The example uses `us-east-1`.
-* **Helper script isn’t executable:**
-  Run:
 
-  ```bash
-  sudo chmod +x tee.sh
-  ```
+* **Helper script isn’t executable:**
+
+```bash
+sudo chmod +x tee.sh
+```
+
 * **Results files missing:**
-  Ensure the `results/` directory exists (it should); commands append to `results/<experiment>.csv`.
+  Ensure the `results/` directory exists. Commands append to `results/<experiment>.csv`.
 
 If you’re still stuck, please open a GitHub issue with a short log snippet and your environment details.
 
@@ -336,4 +365,4 @@ This is research code. See `LICENSE` in the repository for terms.
 * **No AWS? Use Docker emulation.** → [Path B](#path-b-emulated-environment-docker)
 * **Run and collect results.** → [Run Experiments](#run-experiments) → [Summarize Results](#summarize-results)
 
-Happy reproducing!
+Happy reproducing 🎉
