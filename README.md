@@ -1,6 +1,7 @@
 # How to Recover a Cryptographic Secret From the Cloud
 
 **Status:** ✅ Accepted at **ACM CCS 2025** (artifact available)
+
 **Paper:** “How to Recover a Cryptographic Secret From the Cloud” — also on the [Cryptology ePrint Archive (2023/1308)](https://eprint.iacr.org/2023/1308)
 
 ---
@@ -11,7 +12,7 @@
 * Execute **store / retrieve / remove / recover** experiments.
 * Collect **timings** into CSVs and generate **summary stats** (min / max / mean / median / stdev).
 
-**If you’re an AE reviewer in a hurry:**
+**If you’re in a hurry:**
 Jump to **[Quick Start](#quick-start)** → choose **[AWS Nitro](#path-a-aws-nitro-enclaves-real-tee)** or **[Emulated](#path-b-emulated-environment-docker)** → then **[Run Experiments](#run-experiments)** → **[Summarize Results](#summarize-results)**.
 
 ---
