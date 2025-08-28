@@ -21,7 +21,7 @@ Jump to **[Quick Start](#quick-start)** → choose **[AWS Nitro](#path-a-aws-nit
 
 * [Quick Start](#quick-start)
 
-  * [Path A: AWS Nitro Enclaves (Real TEE)](#path-a-aws-nitro-enclaves-real-tee)
+  * [Path A: AWS Nitro Enclaves](#path-a-aws-nitro-enclaves-real-tee)
   * [Path B: Emulated Environment (Docker)](#path-b-emulated-environment-docker)
 * [Run Experiments](#run-experiments)
 * [Summarize Results](#summarize-results)
@@ -37,8 +37,10 @@ Jump to **[Quick Start](#quick-start)** → choose **[AWS Nitro](#path-a-aws-nit
 
 Pick one path:
 
-* **Path A (recommended for real TEE results):** Run on **AWS Nitro Enclaves**.
-* **Path B (fastest to try locally):** Run the **emulated** setup with Docker.
+* **Path A (recommended for AWS Nitro):** Run on **AWS Nitro Enclaves**.
+* **Path B (Emulated with Docker):** Run the **emulated** setup with Docker.
+
+If you prefer to set up and run our artifacts using YouTube videos, we have provided screen recordings for [Path A - Setup with AWS Nitro](https://youtu.be/rcPudxGSbP8) and [Path B - Docker Emulation](https://youtu.be/fgRPIKa5J48)
 
 ---
 
