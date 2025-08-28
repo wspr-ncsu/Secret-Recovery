@@ -151,24 +151,27 @@ cp .env.example .env
 ```
 
 **Use the helper to run/stop/inspect the enclave:**
-
+Make script executable:
 ```bash
 sudo chmod +x tee.sh
 ```
 
+Build and run the enclave:
 ```bash
 ./tee.sh run
 ```
 
-```bash
-./tee.sh terminate
-```
-
+View Read-Only console output of enclave:
 ```bash
 ./tee.sh console
 ```
 
-**Verify enclave is up:**
+Destroy the enclave:
+```bash
+./tee.sh terminate
+```
+
+**Verify enclave Status:**
 
 ```bash
 nitro-cli describe-enclaves
@@ -283,7 +286,7 @@ python -m experiments.store -n 10
 
 ## Summarize Results
 
-Once you’ve collected CSVs in `results/`, compute summary stats (min, max, mean, median, stdev):
+Once you’ve collected CSVs in `experiments/results/`, compute summary stats (min, max, mean, median, stdev) for each experiment type:
 
 **General form:**
 
@@ -294,7 +297,7 @@ python -m experiments.get_stats <input> <output>
 **Example:**
 
 ```bash
-python -m experiments.get_stats results/store.csv results/store-summary.csv
+python -m experiments.get_stats experiments/results/store.csv experiments/results/store-summary.csv
 ```
 
 ---
@@ -347,6 +350,10 @@ sudo chmod +x tee.sh
 
 * **Results files missing:**
   Ensure the `results/` directory exists. Commands append to `results/<experiment>.csv`.
+
+* **TimeoutError: [Errno 110] Connection timed out**
+  Ensure the enclave is running on the parent instance.
+
 
 If you’re still stuck, please open a GitHub issue with a short log snippet and your environment details.
 
