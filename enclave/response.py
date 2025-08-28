@@ -10,14 +10,11 @@ class EnclaveRes:
         self.time_taken = 0
         self.is_removed = False
         self.is_valid_ctx = False
-        self.signature = None
         self.error = None
         self.gatt = None
+        self.lvk = None
     
     def verify(self, vk: str | sigma.PublicKey):
-        if not config.is_nitro_env():
-            return True
-        
         return self.validate_attest()
     
     def serialize(self):
@@ -30,22 +27,36 @@ class EnclaveRes:
             
         return {
             'type': self.req_type,
-            'signature': sigma.stringify(self.signature),
             'payload': self.payload,
             'is_valid_ctx': self.is_valid_ctx,
             'is_removed': self.is_removed,
             'time_taken': self.time_taken,
             'error': self.error,
-            'gatt': self.gatt
+            'gatt': self.gatt,
+            'lvk': self.lvk
         }
         
-    def sign(self, sk: str | sigma.PrivateKey):
-        self.signature = sigma.sign(sk, self.payload)
+    def local_sign(self, message: bytes):
+        sig = sigma.sign(attest.privateKey, message)
+        return bytes(sig)
+    
+    def local_verify(self, message, signature):
+        return sigma.verify(
+            pubkey=self.lvk,
+            message=message,
+            signature=signature
+        )
 
     def attest_res(self):
+        self.lvk = attest.publicKey.hex()
         data: bytes = bytes(helpers.stringify(self.serialize()), 'utf-8')
         user_data = hashlib.sha256(data).digest()
-        self.gatt = attest.get_attestation_document(user_data=user_data)
+
+        if config.is_nitro_env():
+            self.gatt = attest.get_attestation_document(user_data=user_data)
+        else:
+            self.gatt = self.local_sign(user_data)
+
         self.gatt = self.gatt.hex()
 
     def attest_to_json(self):
@@ -58,10 +69,18 @@ class EnclaveRes:
         data['gatt'] = None
         data: bytes = bytes(helpers.stringify(data), 'utf-8')
         user_data = hashlib.sha256(data).digest()
-        return attest.validate(
-            attestation=bytes.fromhex(self.gatt),
-            expected_user_data=user_data
-        )
+        attestation = bytes.fromhex(self.gatt)
+        
+        if config.is_nitro_env():
+            return attest.validate(
+                attestation=attestation,
+                expected_user_data=user_data
+            )
+        else:
+            return self.local_verify(
+                message=user_data, 
+                signature=attestation
+            )
 
     @staticmethod
     def deserialize(data: dict):
@@ -70,10 +89,10 @@ class EnclaveRes:
         res.payload = data.get('payload', {})
         res.is_removed = bool(data.get('is_removed', False))
         res.is_valid_ctx = bool(data.get('is_valid_ctx', False))
-        res.signature = sigma.import_signature(data.get('signature')) if data.get('signature') is not None else None
         res.time_taken = data.get('time_taken', 0)
         res.error = data.get('error', None)
         res.gatt = data.get('gatt')
+        res.lvk = data.get('lvk')
         return res
     
     @staticmethod

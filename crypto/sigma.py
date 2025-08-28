@@ -7,8 +7,8 @@ def keygen():
     return (privkey, privkey.get_g1())
 
 def sign(privkey: PrivateKey, message) -> Signature:
-    message = msg_to_bytes(message)
     privkey = import_priv_key(privkey)
+    message = msg_to_bytes(message)
     return sigma.sign(privkey, message)
 
 def verify(pubkey: PublicKey, message, signature: Signature) -> bool:
@@ -35,23 +35,32 @@ def msg_to_bytes(msg):
     
     return msg
 
-def import_signature(signature: str) -> Signature:
-    if isinstance(signature, Signature):
-        return signature
+def import_signature(sig: str) -> Signature:
+    if isinstance(sig, Signature):
+        return sig
     
-    return Signature.from_bytes(bytes.fromhex(signature))
+    if isinstance(sig, str):
+        sig = bytes.fromhex(sig)
+    
+    return Signature.from_bytes(sig)
 
-def import_priv_key(privkey: str) -> PrivateKey:
+def import_priv_key(privkey) -> PrivateKey:
     if isinstance(privkey, PrivateKey):
         return privkey
     
-    return PrivateKey.from_bytes(bytes.fromhex(privkey))
+    if isinstance(privkey, str):
+        privkey = bytes.fromhex(privkey)
+    
+    return PrivateKey.from_bytes(privkey)
 
 def import_pub_key(pubkey: str) -> PublicKey:
     if isinstance(pubkey, PublicKey):
         return pubkey
     
-    return PublicKey.from_bytes(bytes.fromhex(pubkey))
+    if isinstance(pubkey, str):
+        pubkey = bytes.fromhex(pubkey)
+    
+    return PublicKey.from_bytes(pubkey)
 
 def parse_keys(keystr: str, imp = True):
     privkey, pubkey = keystr.split(':')

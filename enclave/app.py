@@ -29,8 +29,7 @@ def run(req: dict | str | bytes) -> dict | str:
     try:
         req: TEEReq = parse_req(req)
         res: EnclaveRes = req.process_req()
-        if config.is_nitro_env():
-            res.attest_res()
+        res.attest_res()
     except Exception as e:
         traceback.print_exc()
         res: EnclaveRes = EnclaveRes.error(code=422, message=str(e))
