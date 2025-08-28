@@ -40,7 +40,7 @@ Pick one path:
 * **Path A (recommended for AWS Nitro):** Run on **AWS Nitro Enclaves**.
 * **Path B (Emulated with Docker):** Run the **emulated** setup with Docker.
 
-If you prefer to set up and run our artifacts using YouTube videos, we have provided screen recordings for [Path A - Setup with AWS Nitro](https://youtu.be/rcPudxGSbP8) and [Path B - Docker Emulation](https://youtu.be/fgRPIKa5J48)
+If you prefer to set up and run our artifacts using YouTube videos, we have provided screen recordings for [Path A - Setup with AWS Nitro](https://youtu.be/fgRPIKa5J48) and [Path B - Docker Emulation](https://youtu.be/rcPudxGSbP8)
 
 ---
 
