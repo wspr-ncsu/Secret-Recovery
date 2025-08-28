@@ -256,7 +256,7 @@ python -m experiments.remove
 python -m experiments.recover
 ```
 
-**Batch runs** (repeat N times; results still append):
+**Batch runs** (repeat N times). This appends the results to the files. You can delete the contents of `results` folder to start afresh:
 
 ```bash
 python -m experiments.store -n 10
