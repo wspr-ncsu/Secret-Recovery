@@ -38,11 +38,5 @@ sudo nitro-cli --version
 
 echo
 echo "✅ Setup complete."
-echo "Please log out and back in (or open a new SSH session) so your user picks up group changes:"
-echo "    - docker"
-echo "    - ne"
-echo
-echo "After re-login, you can test without sudo:"
-echo "  docker ps"
-echo "  docker compose version"
-echo "  nitro-cli --version"
+
+newgrp docker
