@@ -1,7 +1,7 @@
 # How to Recover a Cryptographic Secret From the Cloud
 
 This repository contains the **implementation and experimental artifacts** for the paper:
-**“How to Recover a Cryptographic Secret From the Cloud”**, currently under review and also available on the [Cryptology ePrint Archive (2023/1308)](https://eprint.iacr.org/2023/1308).
+**“How to Recover a Cryptographic Secret From the Cloud”**, Accepted at ACM CCS 2025 and also available on the [Cryptology ePrint Archive (2023/1308)](https://eprint.iacr.org/2023/1308).
 
 ---
 
