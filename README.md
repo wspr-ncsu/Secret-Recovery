@@ -198,7 +198,17 @@ That’s it — you’re ready to spin up the services locally.
 
 ## Run Experiments
 
-**Start the core services.**
+To start the core services, build the `skrecovery` image first.
+
+Make the build script executable:
+```bash
+sudo chmod +x build-skrecovery.sh
+```
+
+Build the docker image:
+```bash
+./build-skrecovery.sh
+```
 
 **On AWS Nitro (real TEE):**
 
