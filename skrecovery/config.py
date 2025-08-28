@@ -38,7 +38,8 @@ ORDER_SERVICE_CONFIG = {
 }
 
 USE_VSOCK = bool(int(env("USE_VSOCK", 1)))
-VSOCK_HOST = int(env("VSOCK_HOST", 16))
+VSOCK_HOST = env("VSOCK_HOST", 16)
+VSOCK_HOST = int(VSOCK_HOST) if VSOCK_HOST.isnumeric() else VSOCK_HOST
 VSOCK_PORT = int(env("VSOCK_PORT", 5005))
 VSOCK_ENV = env('VSOCK_ENV', 'nitro')
 

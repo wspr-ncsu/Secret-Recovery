@@ -1,6 +1,6 @@
 from crypto import sigma
 import enclave.attest as attest
-import skrecovery.helpers as helpers
+from skrecovery import helpers, config
 import hashlib
 
 class EnclaveRes:
@@ -15,6 +15,9 @@ class EnclaveRes:
         self.gatt = None
     
     def verify(self, vk: str | sigma.PublicKey):
+        if not config.is_nitro_env():
+            return True
+        
         return self.validate_attest()
     
     def serialize(self):

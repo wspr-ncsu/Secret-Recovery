@@ -1,6 +1,7 @@
 import traceback
 from enclave.response import EnclaveRes
 from skrecovery.helpers import parse_json, stringify
+from skrecovery import config
 from enclave.requests import EnclaveReqType, StoreReq, RetrieveReq, RemoveReq, RecoverReq, VerifyCiphertextReq, TEEReq
 
 def parse_req(req: dict) -> StoreReq | RetrieveReq | RemoveReq | RecoverReq | VerifyCiphertextReq:
@@ -28,7 +29,8 @@ def run(req: dict | str | bytes) -> dict | str:
     try:
         req: TEEReq = parse_req(req)
         res: EnclaveRes = req.process_req()
-        res.attest_res()
+        if config.is_nitro_env():
+            res.attest_res()
     except Exception as e:
         traceback.print_exc()
         res: EnclaveRes = EnclaveRes.error(code=422, message=str(e))

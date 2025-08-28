@@ -11,6 +11,8 @@ SERVER = socket.VMADDR_CID_ANY if config.is_nitro_env() else socket.gethostbynam
 SOCK_FAMILY = socket.AF_VSOCK if config.is_nitro_env() else socket.AF_INET
 ADDR = (SERVER, config.VSOCK_PORT)
 
+print("SERVER ADDR:", ADDR, flush=True)
+
 def server_create(address: tuple = None) -> socket.socket:
     server = socket.socket(SOCK_FAMILY, socket.SOCK_STREAM)
     server.bind(address if address else ADDR)

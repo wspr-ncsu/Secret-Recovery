@@ -13,6 +13,7 @@ from skrecovery import config, database
 
 BLK_SEEDS = []
 START_BLK_ID = -1
+filename="seeded_blks.pkl"
 
 def rand_block_data():
     return BLK_SEEDS[random.randint(0, len(BLK_SEEDS)-1)]
@@ -21,7 +22,7 @@ def init():
     global BLK_SEEDS
     # load seeded transactions from pickle file
     try:
-        with open('tmp/seeded_blks.pkl', 'rb') as f:
+        with open(filename, 'rb') as f:
             BLK_SEEDS = pickle.load(f)
     except Exception:
         print("Pickle file is empty or corrupted. Creating new seeded blocks.")
@@ -35,7 +36,7 @@ def init():
             print("\rCreating block", _+1, end='')
             BLK_SEEDS.append(seed_transactions())
         print('')
-        with open('tmp/seeded_blks.pkl', 'wb') as f:
+        with open(filename, 'wb') as f:
             pickle.dump(BLK_SEEDS, f)
 
 def seed_transactions(transactions: list[Transaction] = []):
