@@ -39,7 +39,7 @@ Pick one of the following paths:
   * **Path A (Recommended):** Run on a real TEE with **AWS Nitro Enclaves**.
   * **Path B (Local Emulation):** Run the emulated setup locally with **Docker**.
 
-If you prefer video guides, we have screen recordings for [Path A - Setup with AWS Nitro](https://youtu.be/fgRPIKa5J48) and [Path B - Docker Emulation](https://youtu.be/rcPudxGSbP8).
+If you prefer video guides, we have screen recordings for [Path A - Setup with AWS Nitro](https://drive.google.com/file/d/1Y8E-Wklh29ts-6jBGi1clpM-lSBa8bGh/view?usp=sharing) and [Path B - Docker Emulation](https://drive.google.com/file/d/1mrlABXUkRew-NQM45qLnFvECMddyeYa3/view?usp=sharing). Both videos can be found in [google drive folder](https://drive.google.com/drive/folders/1AycJNbJ36-Q57jjSax9Sw2Qw6gL1dgGe?usp=sharing). Please download the view locally for higher quality.
 
 -----
 
