@@ -19,6 +19,7 @@ Jump to **[Quick Start](#quick-start)** → choose **[AWS Nitro](#path-a-aws-nit
 
 ## Table of Contents
 
+  * [Folder Structure](#folder-structure)
   * [Quick Start](#quick-start)
       * [Path A: AWS Nitro Enclaves (Real TEE)](#path-a-aws-nitro-enclaves-real-tee)
       * [Path B: Emulated Environment (Docker)](#path-b-emulated-environment-docker)
@@ -31,6 +32,15 @@ Jump to **[Quick Start](#quick-start)** → choose **[AWS Nitro](#path-a-aws-nit
   * [License](#license)
 
 -----
+
+## Folder Structure
+
+The project is organized as follows:
+  * `crypto` folder contains common cryptographic primities such as encryption, commitment, pairing and signatures.
+  * `enclave` folder contains all operations related to the enclave.
+  * `fabric` folder contains codes to simulate hyperledger.
+  * `skrecovery` folder contains the protocol implementations.
+  * `experiments` folder contains the scripts to run store, recover, etc.
 
 ## Quick Start
 
@@ -193,11 +203,11 @@ nitro-cli describe-enclaves
 
 ### Path B: Emulated Environment (Docker)
 
-If you don't have AWS access or prefer a local setup, use the emulated path.
+If you don't have AWS access or prefer a local setup, use the emulated path. Because AWS Nitro itself is pretty much a virtual machine, we can fairly emulate all aspects except attestation. We simulate attestaion by using the BLS digital signature scheme for attestation and verification. This behavior should be similar to actual attesation (ECDSA) produced by the Nitro System. 
 
 **1. Install Dependencies**
 
-Ensure you have **Docker** and **Docker Compose** installed on your operating system.
+Ensure you have **Docker** and **Docker Compose** installed on your specific operating system.
 
 **2. Configure the Environment**
 
@@ -375,6 +385,8 @@ python -m experiments.get_stats experiments/results/store.csv experiments/result
   * **AMI or region mismatch:** Ensure your AMI ID is valid for your selected AWS region.
   * **Helper script isn’t executable:** Run `chmod +x tee.sh` and `./build-skrecovery.sh`.
   * **`TimeoutError: [Errno 110] Connection timed out`:** Ensure the enclave is running (`./tee.sh run`) before starting the experiment services.
+  * **Docker Requires Sudo:** If on MacOS or Linux, run `sudo usermod -aG docker $USER` to add your user to docker group then logout and log back in.
+  * **Command `docker compose` not found:** Use `docker-compose`
 
 If you’re still stuck, please open an issue on our GitHub repository with logs and environment details.
 
